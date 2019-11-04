@@ -25,6 +25,8 @@ import os.path
 from plugins.categories.wizardiface import WizardInterface
 from ui.qt import QWidget, QIcon, QTabBar
 from ui.mainwindowtabwidgetbase import MainWindowTabWidgetBase
+from .pylintdriver import PylintDriver
+from .pylintconfigdialog import PylintPluginConfigDialog
 
 
 PLUGIN_HOME_DIR = os.path.dirname(os.path.abspath(__file__)) + os.path.sep
@@ -37,6 +39,7 @@ class PylintPlugin(WizardInterface):
     def __init__(self):
         WizardInterface.__init__(self)
         self.__runAction = None
+        self.__pylintDriver = None
 
     @staticmethod
     def isIDEVersionCompatible(ideVersion):
@@ -70,6 +73,9 @@ class PylintPlugin(WizardInterface):
                                            'Pylint', 'pylint', 2)
         self.ide.sideBars['bottom'].tabButton('pylint', QTabBar.RightSide).resize(0, 0)
 
+        self.__pylintDriver = PylintDriver(self.ide)
+        self.__pylintDriver.sigFinished.connect(self.__pylintFinished)
+
     def deactivate(self):
         """Deactivates the plugin.
 
@@ -94,7 +100,7 @@ class PylintPlugin(WizardInterface):
         should be returned.
         By default no configuring is required.
         """
-        return None
+        return self.configure
 
     def populateMainMenu(self, parentMenu):
         """Populates the main menu.
@@ -162,6 +168,8 @@ class PylintPlugin(WizardInterface):
             'Ctrl+L')
         self.__runAction.setShortcut('Ctrl+L')
 
+    def configure(self):
+        PylintPluginConfigDialog(self.ide.mainWindow).exec_()
 
     def __run(self):
         """Runs the pylint analysis"""
@@ -169,4 +177,7 @@ class PylintPlugin(WizardInterface):
         if editorWidget.getType() == MainWindowTabWidgetBase.PlainTextEditor:
             print(editorWidget)
             print('Asked to run pylint')
+            self.__pylintDriver.start(editorWidget.getFileName(), None)
 
+    def __pylintFinished(self, results):
+        print(results)
