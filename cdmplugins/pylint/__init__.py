@@ -27,6 +27,7 @@ from ui.qt import QWidget, QIcon, QTabBar
 from ui.mainwindowtabwidgetbase import MainWindowTabWidgetBase
 from .pylintdriver import PylintDriver
 from .pylintconfigdialog import PylintPluginConfigDialog
+from .pylintresultviewer import PylintResultViewer
 
 
 PLUGIN_HOME_DIR = os.path.dirname(os.path.abspath(__file__)) + os.path.sep
@@ -68,7 +69,7 @@ class PylintPlugin(WizardInterface):
         """
         WizardInterface.activate(self, ideSettings, ideGlobalData)
 
-        self.ide.sideBars['bottom'].addTab(QWidget(),
+        self.ide.sideBars['bottom'].addTab(PylintResultViewer(PLUGIN_HOME_DIR),
                                            QIcon(PLUGIN_HOME_DIR + 'pylint.png'),
                                            'Pylint', 'pylint', 2)
         self.ide.sideBars['bottom'].tabButton('pylint', QTabBar.RightSide).resize(0, 0)
@@ -88,6 +89,7 @@ class PylintPlugin(WizardInterface):
 
         # self.__runAction.setShortcut('')
         self.__runAction = None
+        self.__pylintDriver = None
 
         WizardInterface.deactivate(self)
 
@@ -169,6 +171,7 @@ class PylintPlugin(WizardInterface):
         self.__runAction.setShortcut('Ctrl+L')
 
     def configure(self):
+        """Configure dialog"""
         PylintPluginConfigDialog(self.ide.mainWindow).exec_()
 
     def __run(self):
@@ -180,4 +183,10 @@ class PylintPlugin(WizardInterface):
             self.__pylintDriver.start(editorWidget.getFileName(), None)
 
     def __pylintFinished(self, results):
+        """Pylint has finished"""
+        error = results.get('ProcessError', None)
+        if error:
+            logging.error(error)
+            return
+
         print(results)
