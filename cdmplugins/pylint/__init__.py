@@ -23,8 +23,10 @@
 import logging
 import os.path
 from plugins.categories.wizardiface import WizardInterface
-from ui.qt import QWidget, QIcon, QTabBar
+from ui.qt import (QWidget, QIcon, QTabBar, QApplication, QCursor, Qt,
+                   QShortcut, QKeySequence)
 from ui.mainwindowtabwidgetbase import MainWindowTabWidgetBase
+from utils.fileutils import isPythonMime
 from .pylintdriver import PylintDriver
 from .pylintconfigdialog import PylintPluginConfigDialog
 from .pylintresultviewer import PylintResultViewer
@@ -39,8 +41,10 @@ class PylintPlugin(WizardInterface):
 
     def __init__(self):
         WizardInterface.__init__(self)
-        self.__runAction = None
         self.__pylintDriver = None
+        self.__resultViewer = None
+        self.__bufferMenuAction = None
+        self.__globalShortcut = None
 
     @staticmethod
     def isIDEVersionCompatible(ideVersion):
@@ -69,13 +73,28 @@ class PylintPlugin(WizardInterface):
         """
         WizardInterface.activate(self, ideSettings, ideGlobalData)
 
-        self.ide.sideBars['bottom'].addTab(PylintResultViewer(PLUGIN_HOME_DIR),
+        self.__resultViewer = PylintResultViewer(self.ide, PLUGIN_HOME_DIR)
+        self.ide.sideBars['bottom'].addTab(self.__resultViewer,
                                            QIcon(PLUGIN_HOME_DIR + 'pylint.png'),
                                            'Pylint', 'pylint', 2)
-        self.ide.sideBars['bottom'].tabButton('pylint', QTabBar.RightSide).resize(0, 0)
+        self.ide.sideBars['bottom'].tabButton('pylint',
+                                              QTabBar.RightSide).resize(0, 0)
+
+        # The clear call must be here, not in the results viewer __init__()
+        # This is because the viewer has not been inserted into the side bar at
+        # the time of __init__() so the tooltip setting does not work
+        self.__resultViewer.clear()
 
         self.__pylintDriver = PylintDriver(self.ide)
         self.__pylintDriver.sigFinished.connect(self.__pylintFinished)
+
+        if self.__globalShortcut is None:
+            self.__globalShortcut = QShortcut(QKeySequence('Ctrl+L'),
+                                              self.ide.mainWindow, self.__run)
+        else:
+            self.__globalShortcut.setKey('Ctrl+L')
+
+        # Add buttons
 
     def deactivate(self):
         """Deactivates the plugin.
@@ -85,11 +104,13 @@ class PylintPlugin(WizardInterface):
         Note: if overriden do not forget to call the
               base class deactivate()
         """
-        self.ide.sideBars['bottom'].removeTab('pylint')
+        self.__globalShortcut.setKey(0)
 
-        # self.__runAction.setShortcut('')
-        self.__runAction = None
+        self.__resultViewer = None
+        self.ide.sideBars['bottom'].removeTab('pylint')
         self.__pylintDriver = None
+
+        # Remove buttons
 
         WizardInterface.deactivate(self)
 
@@ -165,28 +186,60 @@ class PylintPlugin(WizardInterface):
               Having the current widget reference the plugin is able to
               retrieve the information it needs.
         """
-        self.__runAction = parentMenu.addAction(
-            QIcon(PLUGIN_HOME_DIR + 'pylint.png'), 'Run pylint', self.__run,
-            'Ctrl+L')
-        self.__runAction.setShortcut('Ctrl+L')
+        self.__bufferMenuAction = parentMenu.addAction(
+            QIcon(PLUGIN_HOME_DIR + 'pylint.png'), 'Run pylint', self.__run)
 
     def configure(self):
         """Configure dialog"""
-        PylintPluginConfigDialog(self.ide.mainWindow).exec_()
+        PylintPluginConfigDialog(PLUGIN_HOME_DIR, self.ide.mainWindow).exec_()
+
+    def __canRun(self, editorWidget):
+        """Tells if pylint can be run for the given editor widget"""
+        if self.__pylintDriver.isInProcess():
+            return False, None
+        if editorWidget.getType() != MainWindowTabWidgetBase.PlainTextEditor:
+            return False, None
+        if not isPythonMime(editorWidget.getMime()):
+            return False, None
+        if editorWidget.isModified():
+            return False, 'Save changes before running pylint'
+        return True, None
 
     def __run(self):
         """Runs the pylint analysis"""
         editorWidget = self.ide.currentEditorWidget
-        if editorWidget.getType() == MainWindowTabWidgetBase.PlainTextEditor:
-            print(editorWidget)
-            print('Asked to run pylint')
-            self.__pylintDriver.start(editorWidget.getFileName(), None)
+        canRun, message = self.__canRun(editorWidget)
+        if not canRun:
+            if message:
+                self.ide.showStatusBarMessage(message)
+            return
+
+        enc = editorWidget.getEncoding()
+        message = self.__pylintDriver.start(editorWidget.getFileName(), enc)
+        if message is None:
+            self.__switchToRunning()
+        else:
+            logging.error(message)
 
     def __pylintFinished(self, results):
         """Pylint has finished"""
+        self.__switchToIdle()
         error = results.get('ProcessError', None)
         if error:
             logging.error(error)
-            return
+        else:
+            self.__resultViewer.showResults(results)
+            self.ide.mainWindow.activateBottomTab('pylint')
 
-        print(results)
+    def __switchToRunning(self):
+        """Switching to the running mode"""
+        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+        # disable buttons
+        # disable menu
+
+    def __switchToIdle(self):
+        """Switching to the idle mode"""
+        QApplication.restoreOverrideCursor()
+        # enable buttons
+        # enable menu
+

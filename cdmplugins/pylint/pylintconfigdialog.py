@@ -22,23 +22,20 @@
    It is rather an 'about' type dialog at the moment.
 """
 
-import os.path
 import pkg_resources
 from ui.qt import (QDialog, QLabel, QVBoxLayout, QHBoxLayout, QSizePolicy,
                    QPixmap, Qt, QDialogButtonBox)
 
 
-PLUGIN_HOME_DIR = os.path.dirname(os.path.abspath(__file__)) + os.path.sep
 
-
-def getPluginVersionAndPath():
+def getPluginVersionAndPath(pluginHomeDir):
     """Provides the plugin version"""
-    with open(PLUGIN_HOME_DIR + 'pylint.cdmp') as dec_file:
+    with open(pluginHomeDir + 'pylint.cdmp') as dec_file:
         for line in dec_file:
             line = line.strip()
             if line.startswith('Version'):
-                return line.split('=')[1].strip(), PLUGIN_HOME_DIR
-    return 'Unknown', PLUGIN_HOME_DIR
+                return line.split('=')[1].strip()
+    return 'Unknown'
 
 
 def getPylintVersionAndPath():
@@ -54,9 +51,10 @@ class PylintPluginConfigDialog(QDialog):
 
     """Pyling plugin config dialog"""
 
-    def __init__(self, parent):
+    def __init__(self, pluginHomeDir, parent):
         QDialog.__init__(self, parent)
 
+        self.__pluginHomeDir = pluginHomeDir
         self.__createLayout()
         self.setWindowTitle('Pylint plugin information')
 
@@ -65,13 +63,13 @@ class PylintPluginConfigDialog(QDialog):
         self.resize(320, 120)
         self.setSizeGripEnabled(True)
 
-        pluginVersion, pluginPath = getPluginVersionAndPath()
+        pluginVersion = getPluginVersionAndPath(self.__pluginHomeDir)
         pylintVersion, pylintPath = getPylintVersionAndPath()
 
         vboxLayout = QVBoxLayout(self)
         hboxLayout = QHBoxLayout()
         iconLabel = QLabel()
-        iconLabel.setPixmap(QPixmap(PLUGIN_HOME_DIR + 'pylint.png'))
+        iconLabel.setPixmap(QPixmap(self.__pluginHomeDir + 'pylint.png'))
         iconLabel.setScaledContents(True)
         iconLabel.setFixedSize(48, 48)
         hboxLayout.addWidget(iconLabel)
@@ -85,7 +83,7 @@ class PylintPluginConfigDialog(QDialog):
                            '<ul>'
                            '<li>Plugin<br>'
                            'Version: ' + pluginVersion + '<br>'
-                           'Location: ' + pluginPath + '</li>'
+                           'Location: ' + self.__pluginHomeDir + '</li>'
                            '<li>Pylint<br>'
                            'Version: ' + pylintVersion + '<br>' +
                            'Location: ' + pylintPath + '</li>'

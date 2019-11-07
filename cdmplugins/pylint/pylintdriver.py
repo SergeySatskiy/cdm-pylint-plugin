@@ -44,6 +44,10 @@ class PylintDriver(QWidget):
         self.__stdout = ''
         self.__stderr = ''
 
+    def isInProcess(self):
+        """True if pylint is still running"""
+        return self.__process is not None
+
     def start(self, fileName, encoding):
         """Runs the analysis process"""
         if self.__process is not None:
@@ -78,15 +82,10 @@ class PylintDriver(QWidget):
 
     def stop(self):
         """Interrupts the analysis"""
-        print('Stopping the process requested ...')
         if self.__process is not None:
-            print('The process still exist...')
             if self.__process.state() == QProcess.Running:
-                print('The process still running so kill it')
                 self.__process.kill()
-                print('Wait for finishing...')
                 self.__process.waitForFinished()
-                print('The process finished')
             self.__process = None
 
     def __readStdOutput(self):
@@ -107,7 +106,6 @@ class PylintDriver(QWidget):
 
     def __finished(self, exitCode, exitStatus):
         """Handles the process finish"""
-        print('Receive the process finish. Exit code: ' + str(exitCode) + ' Exit status: ' + str(exitStatus))
         self.__process = None
 
         if not self.__stdout:

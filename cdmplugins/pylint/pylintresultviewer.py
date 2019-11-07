@@ -20,6 +20,7 @@
 """Codimension pylint results viewer"""
 
 
+import os.path
 from ui.qt import (QWidget, QLabel, QPalette, QSizePolicy, QAction, Qt,
                    QHBoxLayout, QToolBar, QSize, QIcon)
 from utils.pixmapcache import getIcon
@@ -30,9 +31,11 @@ class PylintResultViewer(QWidget):
 
     """Pylint results viewer"""
 
-    def __init__(self, pluginHomeDir, parent=None):
+    def __init__(self, ide, pluginHomeDir, parent=None):
         QWidget.__init__(self, parent)
 
+        self.__results = None
+        self.__ide = ide
         self.__pluginHomeDir = pluginHomeDir
 
         self.__noneLabel = QLabel("\nNo results available")
@@ -54,10 +57,10 @@ class PylintResultViewer(QWidget):
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.clearButton = QAction(getIcon('trash.png'), 'Clear', self)
-        self.clearButton.triggered.connect(self.__clear)
+        self.clearButton.triggered.connect(self.clear)
 
         self.outputButton = QAction(QIcon(pluginHomeDir + 'output.png'),
-                                    'Show output', self)
+                                    'Show pylint raw stdout and stderr', self)
         self.outputButton.triggered.connect(self.__showOutput)
 
         self.toolbar = QToolBar(self)
@@ -80,10 +83,41 @@ class PylintResultViewer(QWidget):
         # self.__hLayout.addWidget(self.__resultsTree)
 
         self.setLayout(self.__hLayout)
+        self.__updateButtons()
 
+    def __updateButtons(self):
+        """Updates the toolbar buttons approprietly"""
+        self.clearButton.setEnabled(self.__results is not None)
+        self.outputButton.setEnabled(self.__results is not None)
 
-    def __clear(self):
-        pass
+    def showResults(self, results):
+        """Populates the analysis results"""
+        self.__results = results
+        self.__updateButtons()
+
+        tooltip = ' '.join(['pylint results for',
+                            os.path.basename(results['FileName']),
+                           'at',
+                           results['Timestamp']])
+        self.__ide.sideBars['bottom'].setTabToolTip('pylint', tooltip)
+        self.__noneLabel.setVisible(False)
+        # activate the tree
+
+    def clear(self):
+        """Clears the results view"""
+        self.__results = None
+        self.__updateButtons()
+
+        tooltip = 'No results available'
+        self.__ide.sideBars['bottom'].setTabToolTip('pylint', tooltip)
+        self.__noneLabel.setVisible(True)
+        # suppress the tree
+
 
     def __showOutput(self):
-        pass
+        """Shows the analysis stdout and stderr"""
+        if self.__results is None:
+            return
+
+        # Show a separate dialog
+
