@@ -146,7 +146,9 @@ class PylintDriver(QWidget):
             if not lineNo:
                 continue
             lineNo = int(lineNo.split(',')[0])
-            message = line[colonPos2 + 1:]
+            message = line[colonPos2 + 1:].strip()
+            if message.startswith(':'):
+                message = message[1:].strip()
             item = (module, lineNo, message, msgId)
             results[line[0]].append(item)
 
