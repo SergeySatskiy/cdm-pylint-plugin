@@ -24,7 +24,7 @@ import logging
 import os.path
 from plugins.categories.wizardiface import WizardInterface
 from ui.qt import (QWidget, QIcon, QTabBar, QApplication, QCursor, Qt,
-                   QShortcut, QKeySequence)
+                   QShortcut, QKeySequence, QAction)
 from ui.mainwindowtabwidgetbase import MainWindowTabWidgetBase
 from utils.fileutils import isPythonMime
 from .pylintdriver import PylintDriver
@@ -95,6 +95,16 @@ class PylintPlugin(WizardInterface):
             self.__globalShortcut.setKey('Ctrl+L')
 
         # Add buttons
+        for _, _, tabWidget in self.ide.editorsManager.getTextEditors():
+            pylintButton = QAction(QIcon(PLUGIN_HOME_DIR + 'pylint.png'),
+                                   'Run pylint (Ctrl+L)', self)
+            pylintButton.setEnabled(self.__canRun(tabWidget)[0])
+            pylintButton.triggered.connect(self.__run)
+            pylintButton.setObjectName('pylint')
+
+            beforeWidget = tabWidget.toolbar.findChild(QAction,
+                                                       'deadCodeScriptButton')
+            tabWidget.toolbar.insertAction(beforeWidget, pylintButton)
 
     def deactivate(self):
         """Deactivates the plugin.
