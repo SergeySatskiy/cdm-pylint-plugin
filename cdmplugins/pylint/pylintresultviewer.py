@@ -29,6 +29,7 @@ from ui.fitlabel import FitPathLabel
 from utils.pixmapcache import getIcon
 from utils.globals import GlobalData
 from utils.colorfont import getLabelStyle
+from .pylintoutput import PylintStdoutStderrViewer
 
 
 class MessageTableItem(QTreeWidgetItem):
@@ -128,12 +129,13 @@ class PylintResultViewer(QWidget):
         self.__timestampLabel.setStyleSheet(labelStylesheet)
         self.__timestampLabel.setToolTip('pylint analysis timestamp')
         self.__labelLayout = QHBoxLayout()
+        self.__labelLayout.setSpacing(4)
         self.__labelLayout.addWidget(self.__fileLabel)
         self.__labelLayout.addWidget(self.__rateLabel)
         self.__labelLayout.addWidget(self.__timestampLabel)
 
         self.__vLayout = QVBoxLayout()
-        self.__vLayout.setContentsMargins(0, 0, 0, 0)
+        self.__vLayout.setSpacing(4)
         self.__vLayout.addLayout(self.__labelLayout)
         self.__vLayout.addWidget(self.__resultsTree)
 
@@ -150,7 +152,14 @@ class PylintResultViewer(QWidget):
     def __updateButtons(self):
         """Updates the toolbar buttons approprietly"""
         self.clearButton.setEnabled(self.__results is not None)
-        self.outputButton.setEnabled(self.__results is not None)
+
+        if self.__results is not None:
+            stdout = self.__results.get('StdOut', None)
+            stderr = self.__results.get('StdErr', None)
+            self.outputButton.setEnabled(stdout is not None or
+                                         stderr is not None)
+        else:
+            self.outputButton.setEnabled(False)
 
     def showResults(self, results):
         """Populates the analysis results"""
@@ -170,7 +179,7 @@ class PylintResultViewer(QWidget):
                            results['Timestamp']])
         self.__ide.sideBars['bottom'].setTabToolTip('pylint', tooltip)
 
-        self.__fileLabel.setPath('File: ' + results['FileName'])
+        self.__fileLabel.setPath(results['FileName'])
         if 'Rate' in results:
             text = str(results['Rate'])
             if 'PreviousRunRate' in results:
@@ -239,3 +248,6 @@ class PylintResultViewer(QWidget):
             return
 
         # Show a separate dialog
+        PylintStdoutStderrViewer(self.__ide.mainWindow,
+                                 self.__results).exec_()
+
