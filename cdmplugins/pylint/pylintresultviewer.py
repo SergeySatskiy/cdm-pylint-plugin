@@ -23,10 +23,12 @@
 import os.path
 from ui.qt import (QWidget, QLabel, QPalette, QSizePolicy, QAction, Qt,
                    QHBoxLayout, QVBoxLayout, QToolBar, QSize, QIcon,
-                   QTreeWidget, QTreeWidgetItem, QHeaderView)
+                   QTreeWidget, QTreeWidgetItem, QHeaderView, QFrame)
 from ui.itemdelegates import NoOutlineHeightDelegate
+from ui.fitlabel import FitPathLabel
 from utils.pixmapcache import getIcon
 from utils.globals import GlobalData
+from utils.colorfont import getLabelStyle
 
 
 class MessageTableItem(QTreeWidgetItem):
@@ -64,6 +66,7 @@ class PylintResultViewer(QWidget):
         self.__pluginHomeDir = pluginHomeDir
 
         self.__noneLabel = QLabel("\nNo results available")
+        self.__noneLabel.setFrameShape(QFrame.StyledPanel)
         self.__noneLabel.setAlignment(Qt.AlignHCenter)
         font = self.__noneLabel.font()
         font.setPointSize(font.pointSize() + 4)
@@ -74,9 +77,9 @@ class PylintResultViewer(QWidget):
                                   GlobalData().skin['nolexerPaper'])
         self.__noneLabel.setPalette(noneLabelPalette)
 
-        self.__createLayout(self.__pluginHomeDir, parent)
+        self.__createLayout(self.__pluginHomeDir)
 
-    def __createLayout(self, pluginHomeDir, parent):
+    def __createLayout(self, pluginHomeDir):
         """Creates the layout"""
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -110,11 +113,28 @@ class PylintResultViewer(QWidget):
         self.__resultsTree.setHeaderLabels(headerLabels)
         self.__resultsTree.itemActivated.connect(self.__resultActivated)
 
+        self.__fileLabel = FitPathLabel()
+        labelStylesheet = 'QLabel {' + getLabelStyle(self.__fileLabel) + '}'
+        self.__fileLabel.setStyleSheet(labelStylesheet)
+        self.__fileLabel.setAlignment(Qt.AlignLeft)
+        self.__fileLabel.setMinimumWidth(50)
+        self.__fileLabel.setSizePolicy(QSizePolicy.Expanding,
+                                       QSizePolicy.Fixed)
+        self.__rateLabel = QLabel()
+        self.__rateLabel.setStyleSheet(labelStylesheet)
+        self.__rateLabel.setToolTip('pylint analysis rate out of 10 '
+                                    '(previous run if there was one)')
+        self.__timestampLabel = QLabel()
+        self.__timestampLabel.setStyleSheet(labelStylesheet)
+        self.__timestampLabel.setToolTip('pylint analysis timestamp')
+        self.__labelLayout = QHBoxLayout()
+        self.__labelLayout.addWidget(self.__fileLabel)
+        self.__labelLayout.addWidget(self.__rateLabel)
+        self.__labelLayout.addWidget(self.__timestampLabel)
+
         self.__vLayout = QVBoxLayout()
         self.__vLayout.setContentsMargins(0, 0, 0, 0)
-        self.__vLayout.setSpacing(0)
-        self.__statLabel = QLabel()
-        self.__vLayout.addWidget(self.__statLabel)
+        self.__vLayout.addLayout(self.__labelLayout)
         self.__vLayout.addWidget(self.__resultsTree)
 
         self.__hLayout = QHBoxLayout()
@@ -136,7 +156,9 @@ class PylintResultViewer(QWidget):
         """Populates the analysis results"""
         self.clear()
         self.__noneLabel.setVisible(False)
-        self.__statLabel.setVisible(True)
+        self.__fileLabel.setVisible(True)
+        self.__rateLabel.setVisible(True)
+        self.__timestampLabel.setVisible(True)
         self.__resultsTree.setVisible(True)
 
         self.__results = results
@@ -148,18 +170,15 @@ class PylintResultViewer(QWidget):
                            results['Timestamp']])
         self.__ide.sideBars['bottom'].setTabToolTip('pylint', tooltip)
 
-
-        stat = '<table><tr><td>' + 'File: ' + results['FileName'] + '</td>'
+        self.__fileLabel.setPath('File: ' + results['FileName'])
         if 'Rate' in results:
+            text = str(results['Rate'])
             if 'PreviousRunRate' in results:
-                stat += '<td>Rate: ' + str(results['Rate'])
-                stat += ' (previous: ' + str(results['PreviousRunRate']) + ')</td>'
-            else:
-                stat += '<td>Rate: ' + str(results['Rate']) + '</td>'
-
-        stat += '<td>Timestamp: ' + results['Timestamp'] + '</td></tr></table>'
-
-        self.__statLabel.setText(stat)
+                text += ' (' + str(results['PreviousRunRate']) + ')'
+            self.__rateLabel.setText(' ' + text + ' ')
+        else:
+            self.__rateLabel.setVisible(False)
+        self.__timestampLabel.setText(results['Timestamp'])
 
         totalMessages = 0
         totalMessages += self.__populateMessages('Errors')
@@ -199,7 +218,9 @@ class PylintResultViewer(QWidget):
         self.__ide.sideBars['bottom'].setTabToolTip('pylint', tooltip)
         self.__noneLabel.setVisible(True)
 
-        self.__statLabel.setVisible(False)
+        self.__fileLabel.setVisible(False)
+        self.__rateLabel.setVisible(False)
+        self.__timestampLabel.setVisible(False)
         self.__resultsTree.setVisible(False)
         self.__resultsTree.clear()
 
@@ -218,4 +239,3 @@ class PylintResultViewer(QWidget):
             return
 
         # Show a separate dialog
-
