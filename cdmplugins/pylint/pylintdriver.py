@@ -40,6 +40,7 @@ class PylintDriver(QWidget):
 
         self.__ide = ide
         self.__process = None
+        self.__args = None
 
         self.__stdout = ''
         self.__stderr = ''
@@ -66,13 +67,24 @@ class PylintDriver(QWidget):
         self.__stdout = ''
         self.__stderr = ''
 
-        args = ['-m', 'pylint', '--output-format=text',
-                "--msg-template='{msg_id}:{line:3d},{column}: {obj}: {msg}'",
-                os.path.basename(self.__fileName)]
+        self.__args = ['-m', 'pylint',
+                       '--output-format', 'text',
+                       '--msg-template',
+                       '{msg_id}:{line:3d},{column}: {obj}: {msg}',
+                       os.path.basename(self.__fileName)]
+        rcfile = self.getPylintrc()
+        if rcfile:
+            self.__args.append("--rcfile")
+            self.__args.append(rcfile)
+        initHook = self.getInitHook()
+        if initHook:
+            self.__args.append("--init-hook")
+            self.__args.append(initHook)
+
         processEnvironment = QProcessEnvironment()
         processEnvironment.insert('PYTHONIOENCODING', self.__encoding)
         self.__process.setProcessEnvironment(processEnvironment)
-        self.__process.start(sys.executable, args)
+        self.__process.start(sys.executable, self.__args)
 
         running = self.__process.waitForStarted()
         if not running:
@@ -87,6 +99,34 @@ class PylintDriver(QWidget):
                 self.__process.kill()
                 self.__process.waitForFinished()
             self.__process = None
+            self.__args = None
+
+    def getPylintrc(self):
+        """Provides the pylintrc path"""
+        names = ['pylintrc', '.pylintrc']
+        dirs = [os.path.dirname(self.__fileName) + os.path.sep]
+        if self.__ide.project.isLoaded():
+            dirs.append(self.__ide.project.getProjectDir())
+
+        for dirPath in dirs:
+            for name in names:
+                if os.path.exists(dirPath + name):
+                    return dirPath + name
+        return None
+
+    def getInitHook(self):
+        """Provides the init hook with the import directories"""
+        if not self.__ide.project.isLoaded():
+            return None
+        importDirs = self.__ide.project.getImportDirsAsAbsolutePaths()
+        if not importDirs:
+            return None
+
+        importDirs.reverse()
+        code = 'import sys'
+        for importDir in importDirs:
+            code += ';sys.path.insert(0,"' + importDir + '")'
+        return code
 
     def __readStdOutput(self):
         """Handles reading from stdout"""
@@ -101,7 +141,7 @@ class PylintDriver(QWidget):
         self.__process.setReadChannel(QProcess.StandardError)
         qba = QByteArray()
         while self.__process.bytesAvailable():
-            qba += self.process.readAllStandardError()
+            qba += self.__process.readAllStandardError()
         self.__stderr += str(qba.data(), self.__encoding)
 
     def __finished(self, exitCode, exitStatus):
@@ -110,12 +150,13 @@ class PylintDriver(QWidget):
 
         if not self.__stdout:
             if self.__stderr:
-                self.sigFinished.emit({'ProcessError':
-                                       'pylint error:\n' + self.__stderr,
+                self.sigFinished.emit({'ProcessError': 'pylint error:\n' + self.__stderr,
                                        'ExitCode': exitCode,
                                        'ExitStatus': exitStatus,
                                        'FileName': self.__fileName,
-                                       'Timestamp': getLocaleDateTime()})
+                                       'Timestamp': getLocaleDateTime(),
+                                       'CommandLine': [sys.executable] + self.__args})
+            self.__args = None
             return
 
         # Convention, Refactor, Warning, Error
@@ -125,7 +166,8 @@ class PylintDriver(QWidget):
                    'StdOut': self.__stdout,
                    'StdErr': self.__stderr,
                    'FileName': self.__fileName,
-                   'Timestamp': getLocaleDateTime()}
+                   'Timestamp': getLocaleDateTime(),
+                   'CommandLine': [sys.executable] + self.__args}
         modulePattern = '************* Module '
 
         module = ''
@@ -170,4 +212,5 @@ class PylintDriver(QWidget):
                     results['PreviousRunRate'] = previous
 
         self.sigFinished.emit(results)
+        self.__args = None
 
