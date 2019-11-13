@@ -96,15 +96,13 @@ class PylintPlugin(WizardInterface):
 
         # Add buttons
         for _, _, tabWidget in self.ide.editorsManager.getTextEditors():
-            pylintButton = QAction(QIcon(PLUGIN_HOME_DIR + 'pylint.png'),
-                                   'Run pylint (Ctrl+L)', self)
-            pylintButton.setEnabled(self.__canRun(tabWidget)[0])
-            pylintButton.triggered.connect(self.__run)
-            pylintButton.setObjectName('pylint')
+            self.__addButton(tabWidget)
 
-            beforeWidget = tabWidget.toolbar.findChild(QAction,
-                                                       'deadCodeScriptButton')
-            tabWidget.toolbar.insertAction(beforeWidget, pylintButton)
+        # File type changed & new tab
+        self.ide.editorsManager.sigTextEditorTabAdded.connect(
+            self.__textEditorTabAdded)
+        self.ide.editorsManager.sigFileTypeChanged.connect(
+            self.__fileTypeChanged)
 
     def deactivate(self):
         """Deactivates the plugin.
@@ -121,6 +119,16 @@ class PylintPlugin(WizardInterface):
         self.__pylintDriver = None
 
         # Remove buttons
+        for _, _, tabWidget in self.ide.editorsManager.getTextEditors():
+            pylintAction = tabWidget.toolbar.findChild(QAction, 'pylint')
+            tabWidget.toolbar.removeAction(pylintAction)
+            tabWidget.getEditor().modificationChanged.disconnect(
+                self.__modificationChanged)
+
+        self.ide.editorsManager.sigTextEditorTabAdded.disconnect(
+            self.__textEditorTabAdded)
+        self.ide.editorsManager.sigFileTypeChanged.disconnect(
+            self.__fileTypeChanged)
 
         WizardInterface.deactivate(self)
 
@@ -245,11 +253,54 @@ class PylintPlugin(WizardInterface):
         """Switching to the running mode"""
         QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
         # disable buttons
+        for _, _, tabWidget in self.ide.editorsManager.getTextEditors():
+            pylintAction = tabWidget.toolbar.findChild(QAction, 'pylint')
+            if pylintAction is not None:
+                pylintAction.setEnabled(False)
         # disable menu
 
     def __switchToIdle(self):
         """Switching to the idle mode"""
         QApplication.restoreOverrideCursor()
         # enable buttons
+        for _, _, tabWidget in self.ide.editorsManager.getTextEditors():
+            pylintAction = tabWidget.toolbar.findChild(QAction, 'pylint')
+            if pylintAction is not None:
+                pylintAction.setEnabled(self.__canRun(tabWidget)[0])
         # enable menu
+
+    def __addButton(self, tabWidget):
+        """Adds a button to the editor toolbar"""
+        pylintButton = QAction(QIcon(PLUGIN_HOME_DIR + 'pylint.png'),
+                               'Run pylint (Ctrl+L)', tabWidget.toolbar)
+        pylintButton.setEnabled(self.__canRun(tabWidget)[0])
+        pylintButton.triggered.connect(self.__run)
+        pylintButton.setObjectName('pylint')
+
+        beforeWidget = tabWidget.toolbar.findChild(QAction,
+                                                   'deadCodeScriptButton')
+        tabWidget.toolbar.insertAction(beforeWidget, pylintButton)
+        tabWidget.getEditor().modificationChanged.connect(
+            self.__modificationChanged)
+
+    def __modificationChanged(self):
+        """Triggered when one of the text editors changed their mod state"""
+        pylintAction = self.ide.currentEditorWidget.toolbar.findChild(QAction,
+                                                                'pylint')
+        if pylintAction is not None:
+            pylintAction.setEnabled(
+                self.__canRun(self.ide.currentEditorWidget)[0])
+
+    def __textEditorTabAdded(self, tabIndex):
+        """Triggered when a new tab is added"""
+        self.__addButton(self.ide.currentEditorWidget)
+
+    def __fileTypeChanged(self, shortFileName, uuid, mimi):
+        """Triggered when a file changed its type"""
+        # Supposedly it can happened only on the current tab
+        pylintAction = self.ide.currentEditorWidget.toolbar.findChild(QAction,
+                                                                'pylint')
+        if pylintAction is not None:
+            pylintAction.setEnabled(
+                self.__canRun(self.ide.currentEditorWidget)[0])
 
