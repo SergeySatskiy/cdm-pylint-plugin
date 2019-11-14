@@ -72,7 +72,7 @@ class PylintDriver(QWidget):
                        '--msg-template',
                        '{msg_id}:{line:3d},{column}: {obj}: {msg}',
                        os.path.basename(self.__fileName)]
-        rcfile = self.getPylintrc()
+        rcfile = PylintDriver.getPylintrc(self.__ide, self.__fileName)
         if rcfile:
             self.__args.append("--rcfile")
             self.__args.append(rcfile)
@@ -101,12 +101,29 @@ class PylintDriver(QWidget):
             self.__process = None
             self.__args = None
 
-    def getPylintrc(self):
+    def generateRCFile(self, ide, fileName):
+        """Generates the pylintrc file"""
+        if ide.project.isLoaded():
+            rcfile = ide.project.getProjectDir() + 'pylintrc'
+        else:
+            rcfile = os.path.dirname(fileName) + os.path.sep + 'pylintrc'
+
+        process = QProcess(self)
+        process.setStandardOutputFile(rcfile)
+        process.start(sys.executable, ['-m', 'pylint', '--generate-rcfile'])
+        process.waitForFinished()
+        return rcfile
+
+    @staticmethod
+    def getPylintrc(ide, fileName):
         """Provides the pylintrc path"""
         names = ['pylintrc', '.pylintrc']
-        dirs = [os.path.dirname(self.__fileName) + os.path.sep]
-        if self.__ide.project.isLoaded():
-            dirs.append(self.__ide.project.getProjectDir())
+        dirs = []
+        if fileName:
+            dirs = [os.path.dirname(fileName) + os.path.sep]
+
+        if ide.project.isLoaded():
+            dirs.append(ide.project.getProjectDir())
 
         for dirPath in dirs:
             for name in names:
@@ -150,12 +167,13 @@ class PylintDriver(QWidget):
 
         if not self.__stdout:
             if self.__stderr:
-                self.sigFinished.emit({'ProcessError': 'pylint error:\n' + self.__stderr,
-                                       'ExitCode': exitCode,
-                                       'ExitStatus': exitStatus,
-                                       'FileName': self.__fileName,
-                                       'Timestamp': getLocaleDateTime(),
-                                       'CommandLine': [sys.executable] + self.__args})
+                self.sigFinished.emit(
+                    {'ProcessError': 'pylint error:\n' + self.__stderr,
+                     'ExitCode': exitCode,
+                     'ExitStatus': exitStatus,
+                     'FileName': self.__fileName,
+                     'Timestamp': getLocaleDateTime(),
+                     'CommandLine': [sys.executable] + self.__args})
             self.__args = None
             return
 
@@ -208,7 +226,8 @@ class PylintDriver(QWidget):
                 prevRunPos = self.__stdout.find(prevRunPattern, rateEndPos)
                 if prevRunPos > 0:
                     prevRunEndPos = self.__stdout.find('/10', prevRunPos)
-                    previous = self.__stdout[prevRunPos + len(prevRunPattern):prevRunEndPos]
+                    previous = self.__stdout[prevRunPos +
+                                             len(prevRunPattern):prevRunEndPos]
                     results['PreviousRunRate'] = previous
 
         self.sigFinished.emit(results)

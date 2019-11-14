@@ -43,7 +43,7 @@ def getPylintVersionAndPath():
     try:
         return pkg_resources.get_distribution('pylint').version, \
                pkg_resources.get_distribution('pylint').location
-    except pkg_resources.DistributionNotFound as exc:
+    except pkg_resources.DistributionNotFound:
         return 'Unknown', 'Unknown'
 
 

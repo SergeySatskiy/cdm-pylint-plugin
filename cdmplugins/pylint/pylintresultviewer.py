@@ -175,8 +175,8 @@ class PylintResultViewer(QWidget):
 
         tooltip = ' '.join(['pylint results for',
                             os.path.basename(results['FileName']),
-                           'at',
-                           results['Timestamp']])
+                            'at',
+                            results['Timestamp']])
         self.__ide.sideBars['bottom'].setTabToolTip('pylint', tooltip)
 
         self.__fileLabel.setPath(results['FileName'])
@@ -205,6 +205,7 @@ class PylintResultViewer(QWidget):
             QHeaderView.ResizeToContents)
 
     def __populateMessages(self, title):
+        """Populates the analysis messages"""
         count = len(self.__results[title[0]])
         if count > 0:
             suffix = '' if count == 1 else 's'
