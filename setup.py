@@ -74,4 +74,6 @@ setup(name='cdmpylintplugin',
       platforms=['any'],
       packages=['cdmplugins', 'cdmplugins.pylint'],
       install_requires=['pylint==2.4.3'],
-      package_data={'cdmplugins.pylint': [plugin_desc_file]})
+      package_data={'cdmplugins.pylint': [plugin_desc_file,
+                                          'generate.png', 'output.png',
+                                          'pylint.png']})
