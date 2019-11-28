@@ -165,27 +165,27 @@ class PylintDriver(QWidget):
         """Handles the process finish"""
         self.__process = None
 
+        results = {'ExitCode': exitCode,
+                   'ExitStatus': exitStatus,
+                   'FileName': self.__fileName,
+                   'Timestamp': getLocaleDateTime(),
+                   'CommandLine': [sys.executable] + self.__args}
+
         if not self.__stdout:
             if self.__stderr:
-                self.sigFinished.emit(
-                    {'ProcessError': 'pylint error:\n' + self.__stderr,
-                     'ExitCode': exitCode,
-                     'ExitStatus': exitStatus,
-                     'FileName': self.__fileName,
-                     'Timestamp': getLocaleDateTime(),
-                     'CommandLine': [sys.executable] + self.__args})
+                results['ProcessError'] = 'pylint error:\n' + self.__stderr
+            else:
+                results['ProcessError'] = 'pylint produced no output ' \
+                                          '(finished abruptly) for ' + \
+                                          self.__fileName
+            self.sigFinished.emit(results)
             self.__args = None
             return
 
         # Convention, Refactor, Warning, Error
-        results = {'C': [], 'R': [], 'W': [], 'E': [],
-                   'ExitCode': exitCode,
-                   'ExitStatus': exitStatus,
-                   'StdOut': self.__stdout,
-                   'StdErr': self.__stderr,
-                   'FileName': self.__fileName,
-                   'Timestamp': getLocaleDateTime(),
-                   'CommandLine': [sys.executable] + self.__args}
+        results.update({'C': [], 'R': [], 'W': [], 'E': [],
+                        'StdOut': self.__stdout,
+                        'StdErr': self.__stderr})
         modulePattern = '************* Module '
 
         module = ''

@@ -1,3 +1,8 @@
-2019 XXX XX Sergey Satskiy <sergey.satskiy@gmail.com>
+2019 Nov 28 Sergey Satskiy <sergey.satskiy@gmail.com>
+
+* Release 1.0.1
+* Handling the case when pylint finishes abruptly without any output
+
+2019 Nov 17 Sergey Satskiy <sergey.satskiy@gmail.com>
 
 * Initial release 1.0.0 
