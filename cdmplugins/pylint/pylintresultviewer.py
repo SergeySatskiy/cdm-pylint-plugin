@@ -23,7 +23,8 @@
 import os.path
 from ui.qt import (QWidget, QLabel, QPalette, QSizePolicy, QAction, Qt,
                    QHBoxLayout, QVBoxLayout, QToolBar, QSize, QIcon,
-                   QTreeWidget, QTreeWidgetItem, QHeaderView, QFrame)
+                   QTreeWidget, QTreeWidgetItem, QHeaderView, QFrame,
+                   QApplication, QMenu)
 from ui.itemdelegates import NoOutlineHeightDelegate
 from ui.fitlabel import FitPathLabel
 from utils.pixmapcache import getIcon
@@ -121,6 +122,11 @@ class PylintResultViewer(QWidget):
         self.__fileLabel.setMinimumWidth(50)
         self.__fileLabel.setSizePolicy(QSizePolicy.Expanding,
                                        QSizePolicy.Fixed)
+        self.__fileLabel.doubleClicked.connect(self.onPathLabelDoubleClick)
+        self.__fileLabel.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.__fileLabel.customContextMenuRequested.connect(
+            self.showPathLabelContextMenu)
+
         self.__rateLabel = QLabel()
         self.__rateLabel.setStyleSheet(labelStylesheet)
         self.__rateLabel.setToolTip('pylint analysis rate out of 10 '
@@ -251,4 +257,49 @@ class PylintResultViewer(QWidget):
         # Show a separate dialog
         PylintStdoutStderrViewer(self.__ide.mainWindow,
                                  self.__results).exec_()
+
+    def onPathLabelDoubleClick(self):
+        """Double click on the path label"""
+        txt = self.__getPathLabelFilePath()
+        if txt.lower():
+            QApplication.clipboard().setText(txt)
+
+    def __getPathLabelFilePath(self):
+        """Provides undecorated path label content"""
+        txt = str(self.__fileLabel.getPath())
+        if txt.startswith('File: '):
+            return txt.replace('File: ', '')
+        return txt
+
+    def showPathLabelContextMenu(self, pos):
+        """Triggered when a context menu is requested for the path label"""
+        contextMenu = QMenu(self)
+        contextMenu.addAction(getIcon('copymenu.png'),
+                              'Copy full path to clipboard (double click)',
+                              self.onPathLabelDoubleClick)
+        contextMenu.addSeparator()
+        contextMenu.addAction(getIcon(''), 'Copy directory path to clipboard',
+                              self.onCopyDirToClipboard)
+        contextMenu.addAction(getIcon(''), 'Copy file name to clipboard',
+                              self.onCopyFileNameToClipboard)
+        contextMenu.popup(self.__fileLabel.mapToGlobal(pos))
+
+    def onCopyDirToClipboard(self):
+        """Copies the dir path of the current file into the clipboard"""
+        txt = self.__getPathLabelFilePath()
+        if txt.lower():
+            try:
+                QApplication.clipboard().setText(os.path.dirname(txt) +
+                                                 os.path.sep)
+            except:
+                pass
+
+    def onCopyFileNameToClipboard(self):
+        """Copies the file name of the current file into the clipboard"""
+        txt = self.__getPathLabelFilePath()
+        if txt.lower():
+            try:
+                QApplication.clipboard().setText(os.path.basename(txt))
+            except:
+                pass
 
