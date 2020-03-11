@@ -26,10 +26,10 @@ from ui.qt import (QWidget, QLabel, QPalette, QSizePolicy, QAction, Qt,
                    QTreeWidget, QTreeWidgetItem, QHeaderView, QFrame,
                    QApplication, QMenu)
 from ui.itemdelegates import NoOutlineHeightDelegate
-from ui.fitlabel import FitPathLabel
+from ui.labels import HeaderFitPathLabel, HeaderLabel
+from ui.spacers import ToolBarExpandingSpacer
 from utils.pixmapcache import getIcon
 from utils.globals import GlobalData
-from utils.colorfont import getLabelStyle
 from .pylintoutput import PylintStdoutStderrViewer
 
 
@@ -83,9 +83,6 @@ class PylintResultViewer(QWidget):
 
     def __createLayout(self, pluginHomeDir):
         """Creates the layout"""
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
         self.clearButton = QAction(getIcon('trash.png'), 'Clear', self)
         self.clearButton.triggered.connect(self.clear)
 
@@ -102,7 +99,7 @@ class PylintResultViewer(QWidget):
         self.toolbar.setContentsMargins(0, 0, 0, 0)
 
         self.toolbar.addAction(self.outputButton)
-        self.toolbar.addWidget(spacer)
+        self.toolbar.addWidget(ToolBarExpandingSpacer(self.toolbar))
         self.toolbar.addAction(self.clearButton)
 
         self.__resultsTree = QTreeWidget(self)
@@ -115,9 +112,7 @@ class PylintResultViewer(QWidget):
         self.__resultsTree.setHeaderLabels(headerLabels)
         self.__resultsTree.itemActivated.connect(self.__resultActivated)
 
-        self.__fileLabel = FitPathLabel()
-        labelStylesheet = 'QLabel {' + getLabelStyle(self.__fileLabel) + '}'
-        self.__fileLabel.setStyleSheet(labelStylesheet)
+        self.__fileLabel = HeaderFitPathLabel(None, self)
         self.__fileLabel.setAlignment(Qt.AlignLeft)
         self.__fileLabel.setMinimumWidth(50)
         self.__fileLabel.setSizePolicy(QSizePolicy.Expanding,
@@ -127,12 +122,10 @@ class PylintResultViewer(QWidget):
         self.__fileLabel.customContextMenuRequested.connect(
             self.showPathLabelContextMenu)
 
-        self.__rateLabel = QLabel()
-        self.__rateLabel.setStyleSheet(labelStylesheet)
+        self.__rateLabel = HeaderLabel()
         self.__rateLabel.setToolTip('pylint analysis rate out of 10 '
                                     '(previous run if there was one)')
-        self.__timestampLabel = QLabel()
-        self.__timestampLabel.setStyleSheet(labelStylesheet)
+        self.__timestampLabel = HeaderLabel()
         self.__timestampLabel.setToolTip('pylint analysis timestamp')
         self.__labelLayout = QHBoxLayout()
         self.__labelLayout.setSpacing(4)
