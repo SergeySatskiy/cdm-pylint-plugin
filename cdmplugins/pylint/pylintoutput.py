@@ -21,7 +21,7 @@
 
 from ui.qt import (QDialog, QVBoxLayout, QHBoxLayout, Qt, QProcess,
                    QSizePolicy, QLabel, QDialogButtonBox, QTextEdit)
-from utils.colorfont import getLabelStyle
+from ui.labels import HeaderFitLabel
 from utils.colorfont import getZoomedMonoFont
 
 
@@ -55,12 +55,11 @@ class PylintStdoutStderrViewer(QDialog):
         headerLayout = QHBoxLayout()
         headerLayout.setSpacing(4)
 
-        statusLabel = QLabel(self)
-        labelStylesheet = 'QLabel {' + getLabelStyle(statusLabel) + '}'
-        statusLabel.setStyleSheet(labelStylesheet)
+        statusLabel = HeaderFitLabel(self)
         statusLabel.setAlignment(Qt.AlignLeft)
         statusLabel.setSizePolicy(QSizePolicy.Expanding,
                                   QSizePolicy.Fixed)
+        statusLabel.setMinimumWidth(10)
         if 'ExitStatus' in results:
             if results['ExitStatus'] == QProcess.NormalExit:
                 statusLabel.setText('Exit status: normal exit')
@@ -69,11 +68,11 @@ class PylintStdoutStderrViewer(QDialog):
         else:
             statusLabel.setText('Exit status: not available')
 
-        exitCodeLabel = QLabel(self)
-        exitCodeLabel.setStyleSheet(labelStylesheet)
+        exitCodeLabel = HeaderFitLabel(self)
         exitCodeLabel.setAlignment(Qt.AlignLeft)
         exitCodeLabel.setSizePolicy(QSizePolicy.Expanding,
                                     QSizePolicy.Fixed)
+        exitCodeLabel.setMinimumWidth(10)
         if 'ExitCode' in results:
             if 'ExitStatus' in results:
                 if results['ExitStatus'] == QProcess.NormalExit:
