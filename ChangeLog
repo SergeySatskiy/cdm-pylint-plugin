@@ -1,7 +1,8 @@
-2020 Mar XX Sergey Satskiy <sergey.satskiy@gmail.com>
+2020 Mar 23 Sergey Satskiy <sergey.satskiy@gmail.com>
 
 * Release 1.0.3
 * Layout improvements: readiness for the dark skin
+* Replacing labels and spacers to reuse the ones from the IDE
 
 2019 Dec 19 Sergey Satskiy <sergey.satskiy@gmail.com>
 

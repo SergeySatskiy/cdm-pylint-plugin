@@ -62,7 +62,7 @@ class PylintPlugin(WizardInterface):
         the current IDE version.
         True should be returned if the plugin is compatible with the IDE.
         """
-        return StrictVersion(ideVersion) > StrictVersion('4.6.0')
+        return StrictVersion(ideVersion) >= StrictVersion('4.7.1')
 
     def activate(self, ideSettings, ideGlobalData):
         """Activates the plugin.
